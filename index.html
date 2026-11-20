@@ -1,0 +1,1070 @@
+TEST<b>`${x}`</b>
+line2<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Matching Card Game</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background: #eef0f3;
+    color: #1c1e21;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 20px 20px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 14px; }
+  .panel { background: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  textarea {
+    width: 100%; height: 110px; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px; padding: 10px; border: 1px solid #cfd3d8; border-radius: 8px; resize: vertical;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 10px; }
+  .row label { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  select, input[type=text], input[type=color], input[type=number] { font-size: 13px; padding: 5px 7px; border-radius: 6px; border: 1px solid #cfd3d8; }
+  button {
+    font-size: 14px; padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;
+  }
+  .primary { background: #2563eb; color: #fff; }
+  .success { background: #16a34a; color: #fff; }
+  .neutral { background: #fff; color: #333; border: 1px solid #cfd3d8; }
+  .danger { background: #fff; color: #b42318; border: 1px solid #f0b3ac; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .status { font-size: 12.5px; color: #555; margin-top: 8px; }
+  details > summary { cursor: pointer; font-weight: 700; font-size: 14px; padding: 4px 0; }
+
+  table.lb { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.lb th, table.lb td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+  table.lb th { color: #666; font-weight: 600; }
+  table.lb input[type=number] { width: 60px; }
+
+  .roster-item, .back-cfg, .turn-table-admin { border: 1px solid #eee; border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+  .roster-item .name { font-weight: 600; }
+  .small-btn { font-size: 12px; padding: 4px 9px; }
+  .back-grid { display: flex; gap: 20px; flex-wrap: wrap; }
+  .back-preview {
+    width: 92px; height: 128px; border-radius: 10px; color: #fff; font-weight: 700; font-size: 22px;
+    display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center;
+  }
+  .gone-chip { display:inline-block; background:#f3f4f6; border-radius:14px; padding:3px 10px 3px 12px; margin:3px 5px 3px 0; font-size:12.5px; }
+  .gone-chip button { margin-left:6px; padding:1px 7px; font-size:11px; border-radius:10px; }
+
+  /* ===================== GAME VIEW (full screen, large-format) ===================== */
+  #gameView { display: none; height: 100vh; width: 100vw; background: #10131a; color: #fff; flex-direction: column; }
+  #gameHeader { display: flex; align-items: center; justify-content: space-between; padding: 14px 26px; background: #171b24; }
+  #gameHeader .title { font-size: clamp(18px, 2vw, 28px); font-weight: 800; }
+  #gameHeader .btns { margin: 0; }
+  #gameHeader button { font-size: clamp(12px, 1vw, 15px); }
+
+  #turnBanner {
+    display: flex; align-items: center; justify-content: center; gap: 22px;
+    padding: 14px; background: linear-gradient(90deg, #1e293b, #334155);
+    font-size: clamp(16px, 2.2vw, 30px); font-weight: 800;
+  }
+  #turnBanner .timer {
+    background: #f59e0b; color: #111; border-radius: 10px; padding: 4px 16px; font-variant-numeric: tabular-nums;
+  }
+  #turnBanner .table-tag { color: #93c5fd; }
+  #turnBanner button { font-size: clamp(12px, 1vw, 15px); }
+
+  .board { flex: 1; display: flex; gap: 2vw; padding: 1.5vh 2vw; min-height: 0; }
+  .side { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .side h3 { text-align: center; font-size: clamp(14px, 1.6vw, 26px); margin: 0 0 1vh; color: #cbd5e1; flex: 0 0 auto; }
+  .card-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 1.4%; min-height: 0; }
+  .card { width: 100%; height: 100%; min-width: 0; min-height: 0; perspective: 900px; cursor: pointer; }
+  .card.gone { visibility: hidden; }
+  .card.matched .card-inner { opacity: 0; transform: scale(0.85) rotateY(180deg); }
+  .card-inner {
+    position: relative; width: 100%; height: 100%;
+    transition: transform 0.35s, opacity 0.4s; transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    padding: 8px; text-align: center; font-size: clamp(12px, min(2.6vw, 5vh), 30px); line-height: 1.25; overflow: hidden;
+  }
+  .card-back { color: #fff; font-weight: 700; font-size: clamp(20px, min(5vw, 9vh), 56px); background-size: cover; background-position: center; }
+  .card-front { transform: rotateY(180deg); background: #fff; color:#111; border: 3px solid #ddd; font-weight: 700; }
+  .card.sel-blue .card-front { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.35); }
+  .card.sel-red .card-front { border-color: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.35); }
+  .progress { text-align: center; font-size: clamp(12px, 1.1vw, 16px); color: #94a3b8; padding: 4px 0 16px; }
+
+  #matchPopup {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.6);
+    pointer-events: none; z-index: 50; opacity: 0;
+    font-size: clamp(28px, 5vw, 72px); font-weight: 900; color: #22c55e;
+    text-shadow: 0 0 18px rgba(34,197,94,0.85), 0 2px 6px rgba(0,0,0,0.6);
+    text-align: center; white-space: nowrap;
+  }
+  #matchPopup.miss { color: #f59e0b; text-shadow: 0 0 18px rgba(245,158,11,0.85), 0 2px 6px rgba(0,0,0,0.6); }
+  #matchPopup.show { animation: matchPop 1.1s ease-out forwards; }
+  @keyframes matchPop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    30%  { transform: translate(-50%, -50%) scale(1); }
+    80%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
+  }
+
+  /* Root & Suffix format: cards are always face-up, no flip */
+  .card.no-flip .card-inner { transform: none; }
+  .card.no-flip .card-face.card-front { position: static; transform: none; backface-visibility: visible; }
+  .card.no-flip.matched .card-inner { opacity: 0; transform: scale(0.85); }
+
+  .single-card-wrap { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .big-card { width: 42vmin; height: 58vmin; }
+  .big-card .card-face.card-front { font-size: clamp(24px, 5.5vw, 60px); font-weight: 800; }
+
+  .card-grid.rs-grid { align-items: center; justify-items: center; }
+  .landscape-card { width: 100%; height: auto; aspect-ratio: 1.6 / 1; max-height: 100%; }
+</style>
+</head>
+<body>
+
+<!-- ===================== SETUP / ADMIN VIEW ===================== -->
+<div class="wrap" id="setupView">
+  <h1>Matching Card Game</h1>
+  <div class="sub">For <strong>Question &amp; Answer</strong>: Column A = the question, Column B onward = the accepted answer(s). For <strong>Root Word &amp; Suffix</strong>: Column A = the root word, Column B = the fixed bank of answer options (same list every row), Column C onward = the correct answer(s) for that root. Multiple answers in one cell can be comma-separated (e.g. "-s, -ing"). If your spreadsheet is laid out by column instead of by row (root words across row 1), use the column-based option below instead. Pick the game format in the back end.</div>
+  <div class="sub" id="formatHint"></div>
+
+  <div class="panel">
+    <textarea id="pasteArea" placeholder="Question&#9;Answer&#10;What is 2+2?&#9;4&#10;Capital of France?&#9;Paris"></textarea>
+    <div class="row">
+      <label id="hasHeadersLabel"><input type="checkbox" id="hasHeaders" checked> First row is headers</label>
+      <label><input type="checkbox" id="transposedFormat"> Column-based: row 1 = root words, row 2 = all possible answer choices, row 3+ = the correct answer(s) per column</label>
+      <span class="status" id="dataStatus"></span>
+    </div>
+    <div class="btns">
+      <button id="generateBtn" class="primary">Generate Game (opens full-screen game view)</button>
+      <button id="playAgainBtn" class="neutral" disabled>Reshuffle board (same data)</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Leaderboard / Points</h2>
+    <table class="lb" id="leaderboardTable">
+      <thead><tr><th>Name</th><th>Table</th><th>Points</th></tr></thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+    <div class="btns"><button id="resetLeaderboardBtn" class="danger small-btn">Reset all points</button></div>
+  </div>
+
+  <details class="panel">
+    <summary>Back end — turns, card backs &amp; student roster</summary>
+
+    <h2 style="margin-top:16px;">Game format</h2>
+    <div class="row">
+      <label>Format:
+        <select id="gameFormat">
+          <option value="qa">Question &amp; Answer (cards hidden, memory match)</option>
+          <option value="root-suffix">Root Word &amp; Suffix (cards always visible)</option>
+        </select>
+      </label>
+    </div>
+    <div class="status">Root Word &amp; Suffix shows every card face-up: click a root, click a suffix, then it checks the pair — no hiding or flipping.</div>
+
+    <h2 style="margin-top:22px;">Turn settings</h2>
+    <div class="row">
+      <label>Turn length (seconds): <input type="number" id="turnSeconds" min="5" max="600" style="width:70px;"></label>
+      <label><input type="checkbox" id="useTimerToggle" checked> Use timer</label>
+      <button id="resetGameBtn" class="danger small-btn" type="button">Reset game (reshuffle board + restart turn order)</button>
+    </div>
+    <div class="status" id="turnAdminStatus" style="margin-top:8px;"></div>
+    <div id="turnAdminList"></div>
+
+    <h2 style="margin-top:22px;">Card backs</h2>
+    <div class="back-grid">
+      <div class="back-cfg">
+        <div style="font-weight:700; margin-bottom:6px;">Side A (Questions)</div>
+        <div class="back-preview" id="previewA"></div>
+        <div class="row">
+          <label>Color: <input type="color" id="colorA" value="#2563eb"></label>
+        </div>
+        <div class="row">
+          <label>Label: <input type="text" id="labelA" value="?" style="width:60px;"></label>
+        </div>
+        <div class="row">
+          <label>Image: <input type="file" id="imageA" accept="image/*"></label>
+          <button class="neutral small-btn" id="clearImageA" type="button">Clear image</button>
+        </div>
+      </div>
+      <div class="back-cfg">
+        <div style="font-weight:700; margin-bottom:6px;">Side B (Answers)</div>
+        <div class="back-preview" id="previewB"></div>
+        <div class="row">
+          <label>Color: <input type="color" id="colorB" value="#dc2626"></label>
+        </div>
+        <div class="row">
+          <label>Label: <input type="text" id="labelB" value="?" style="width:60px;"></label>
+        </div>
+        <div class="row">
+          <label>Image: <input type="file" id="imageB" accept="image/*"></label>
+          <button class="neutral small-btn" id="clearImageB" type="button">Clear image</button>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:22px;">Student roster (tables)</h2>
+
+    <div class="status">Upload from a spreadsheet: two columns, Table name in column A and one Student name per row in column B. Multiple rows with the same table name are grouped together.</div>
+    <textarea id="rosterPaste" style="height:80px; margin-top:6px;" placeholder="Table&#9;Student&#10;Table 1&#9;Alex&#10;Table 1&#9;Sam&#10;Table 2&#9;Jordan"></textarea>
+    <div class="row">
+      <label><input type="checkbox" id="rosterHasHeaders" checked> First row is headers</label>
+      <button id="uploadRosterBtn" class="primary small-btn" type="button">Upload roster</button>
+      <span class="status" id="rosterUploadStatus"></span>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <input type="text" id="newTableName" placeholder="Table name (e.g. Table 3)">
+      <input type="text" id="newTableStudents" placeholder="Student names, comma separated" style="width:280px;">
+      <button id="addTableBtn" class="primary small-btn" type="button">Add table</button>
+    </div>
+    <div id="rosterList"></div>
+  </details>
+</div>
+
+<!-- ===================== GAME VIEW (full-screen, for the classroom display) ===================== -->
+<div id="gameView">
+  <div id="gameHeader">
+    <div class="title">Matching Card Game</div>
+    <div class="btns">
+      <button class="neutral" id="fullscreenBtn" type="button">Fullscreen</button>
+      <button class="neutral" id="backToAdminBtn" type="button">⚙ Admin</button>
+    </div>
+  </div>
+  <div id="turnBanner">
+    <span id="turnText">Add students to the roster to enable timed turns.</span>
+    <span class="timer" id="turnTimer" style="display:none;"></span>
+    <button class="neutral" id="pauseBtn" type="button" style="display:none;">⏸ Pause</button>
+    <button class="neutral" id="nextTurnBtn" type="button" style="display:none;">Next student ▶</button>
+  </div>
+  <div class="board" id="board"></div>
+  <div id="matchPopup"></div>
+  <div class="progress" id="progress"></div>
+</div>
+
+<script>
+/* ---------------- persistence ---------------- */
+const LS_LEADERBOARD = 'cardgame_leaderboard';
+const LS_ROSTER = 'cardgame_roster';
+const LS_BACKS = 'cardgame_backs';
+const LS_SETTINGS = 'cardgame_settings';
+
+function loadJSON(key, fallback){
+  try { const v = JSON.parse(localStorage.getItem(key)); return v || fallback; } catch(e){ return fallback; }
+}
+function saveJSON(key, val){
+  try { localStorage.setItem(key, JSON.stringify(val)); }
+  catch(e){ console.warn('Could not save to localStorage:', e); }
+}
+
+let leaderboard = loadJSON(LS_LEADERBOARD, {});
+let roster = loadJSON(LS_ROSTER, []);
+let backs = loadJSON(LS_BACKS, {
+  a: { color: '#2563eb', label: '?', image: null },
+  b: { color: '#dc2626', label: '?', image: null }
+});
+let settings = loadJSON(LS_SETTINGS, { turnSeconds: 30, useTimer: true, format: 'qa' });
+
+/* ---------------- elements ---------------- */
+const setupView = document.getElementById('setupView');
+const gameView = document.getElementById('gameView');
+const pasteArea = document.getElementById('pasteArea');
+const hasHeadersEl = document.getElementById('hasHeaders');
+const hasHeadersLabel = document.getElementById('hasHeadersLabel');
+const transposedFormatEl = document.getElementById('transposedFormat');
+const dataStatus = document.getElementById('dataStatus');
+const generateBtn = document.getElementById('generateBtn');
+const playAgainBtn = document.getElementById('playAgainBtn');
+const boardEl = document.getElementById('board');
+const progressEl = document.getElementById('progress');
+const leaderboardBody = document.getElementById('leaderboardBody');
+const resetLeaderboardBtn = document.getElementById('resetLeaderboardBtn');
+const turnSecondsEl = document.getElementById('turnSeconds');
+const useTimerToggle = document.getElementById('useTimerToggle');
+const gameFormatEl = document.getElementById('gameFormat');
+const formatHint = document.getElementById('formatHint');
+const resetGameBtn = document.getElementById('resetGameBtn');
+const turnAdminList = document.getElementById('turnAdminList');
+const turnAdminStatus = document.getElementById('turnAdminStatus');
+
+const colorA = document.getElementById('colorA'), colorB = document.getElementById('colorB');
+const labelA = document.getElementById('labelA'), labelB = document.getElementById('labelB');
+const imageA = document.getElementById('imageA'), imageB = document.getElementById('imageB');
+const clearImageA = document.getElementById('clearImageA'), clearImageB = document.getElementById('clearImageB');
+const previewA = document.getElementById('previewA'), previewB = document.getElementById('previewB');
+
+const newTableName = document.getElementById('newTableName');
+const newTableStudents = document.getElementById('newTableStudents');
+const addTableBtn = document.getElementById('addTableBtn');
+const rosterList = document.getElementById('rosterList');
+const rosterPaste = document.getElementById('rosterPaste');
+const rosterHasHeaders = document.getElementById('rosterHasHeaders');
+const uploadRosterBtn = document.getElementById('uploadRosterBtn');
+const rosterUploadStatus = document.getElementById('rosterUploadStatus');
+
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const backToAdminBtn = document.getElementById('backToAdminBtn');
+const turnText = document.getElementById('turnText');
+const turnTimerEl = document.getElementById('turnTimer');
+const pauseBtn = document.getElementById('pauseBtn');
+const nextTurnBtn = document.getElementById('nextTurnBtn');
+
+/* ---------------- parsing ---------------- */
+function splitLine(line){
+  if (line.indexOf('\t') !== -1) return line.split('\t');
+  const out = []; let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++){
+    const c = line[i];
+    if (c === '"'){ inQuotes = !inQuotes; continue; }
+    if (c === ',' && !inQuotes){ out.push(cur); cur=''; continue; }
+    cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+let pairsData = []; // [{id, left, rights:[...]}]
+let rsExplicitOptions = null; // master suffix/answer bank, when the sheet specifies one explicitly
+
+function splitCell(cell){
+  return cell.split(/[,;]/).map(s => s.trim()).filter(Boolean);
+}
+
+function parsePairs(){
+  const raw = pasteArea.value.replace(/\r/g,'');
+  const lines = raw.split('\n').filter(l => l.trim().length > 0);
+  let rows = lines.map(splitLine).map(r => r.map(c => (c||'').trim()));
+
+  if (transposedFormatEl.checked){
+    // Column-based: row 1 = root words, row 2 = the full bank of possible answer
+    // choices (read across the whole row, not tied to a specific column), and
+    // row 3 onward = the correct answer(s) for that column's root.
+    const numCols = Math.max(0, ...rows.map(r => r.length));
+    const rootRow = rows[0] || [];
+    const optionsRow = rows[1] || [];
+    const answerRows = rows.slice(2);
+
+    rsExplicitOptions = Array.from(new Set(optionsRow.filter(Boolean).flatMap(splitCell)));
+
+    const cols = [];
+    for (let c = 0; c < numCols; c++){
+      const left = (rootRow[c] || '').trim();
+      const rights = answerRows
+        .map(r => (r[c] || '').trim())
+        .filter(Boolean)
+        .flatMap(splitCell);
+      if (left && rights.length) cols.push({ left, rights });
+    }
+    pairsData = cols.map((c, i) => ({ id: i, left: c.left, rights: c.rights }));
+    return pairsData;
+  }
+
+  if (hasHeadersEl.checked && rows.length > 0) rows = rows.slice(1);
+
+  if (settings.format === 'root-suffix'){
+    // Row-based: Column A = root word, Column B = the fixed bank of answer options
+    // (the same set every row — read across all rows and de-duplicated), and
+    // Column C onward = the correct answer(s) for that row's root.
+    rsExplicitOptions = Array.from(new Set(rows.map(r => (r[1] || '').trim()).filter(Boolean).flatMap(splitCell)));
+    pairsData = rows
+      .filter(r => r[0] && r.slice(2).some(Boolean))
+      .map((r, i) => {
+        const left = r[0];
+        const rights = r.slice(2)
+          .filter(Boolean)
+          .flatMap(splitCell);
+        return { id: i, left, rights };
+      });
+    return pairsData;
+  }
+
+  // Question & Answer: Column A = question, Column B onward = accepted answer(s).
+  rsExplicitOptions = null;
+  pairsData = rows
+    .filter(r => r[0] && r.slice(1).some(Boolean))
+    .map((r, i) => {
+      const left = r[0];
+      const rights = r.slice(1)
+        .filter(Boolean)
+        .flatMap(splitCell);
+      return { id: i, left, rights };
+    });
+  return pairsData;
+}
+
+function pairById(id){ return pairsData.find(p => p.id === id); }
+
+/* ---------------- board / matching game state ---------------- */
+let pool = [];
+let qSlots = [];
+let aSlots = [];
+let matchedCount = 0;
+let totalPairs = 0;
+let selQ = null, selA = null;
+let lock = false;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* Scales a card's text to be as large as possible while still fitting the card,
+   so a short word ("run") renders big and a long one doesn't overflow. */
+function autoFitCardText(cardEl){
+  const front = cardEl.querySelector('.card-front');
+  if (!front) return;
+  const maxW = cardEl.clientWidth * 0.86;
+  const maxH = cardEl.clientHeight * 0.8;
+  let lo = 10, hi = 90, best = 10;
+  for (let i = 0; i < 8; i++){
+    const mid = (lo + hi) / 2;
+    front.style.fontSize = mid + 'px';
+    const fits = front.scrollWidth <= maxW && front.scrollHeight <= maxH;
+    if (fits){ best = mid; lo = mid; } else { hi = mid; }
+  }
+  front.style.fontSize = best + 'px';
+}
+
+function startGameForFormat(pairs){
+  if (settings.format === 'root-suffix') buildRootSuffixQuiz(pairs);
+  else buildBoardFromPairs(pairs);
+}
+
+function buildBoardFromPairs(pairs){
+  const shuffled = shuffle(pairs);
+  const activeCount = Math.min(8, shuffled.length);
+  qSlots = shuffled.slice(0, activeCount).map(p => p.id);
+  aSlots = shuffle(qSlots.slice()).map(id => ({ pairId: id, text: pairById(id).rights[0] || '' }));
+  pool = shuffled.slice(activeCount).map(p => p.id);
+  matchedCount = 0;
+  totalPairs = pairs.length;
+  selQ = null; selA = null; lock = false;
+  renderBoard();
+}
+
+function renderBoard(){
+  boardEl.innerHTML = `
+    <div class="side">
+      <h3>Questions</h3>
+      <div class="card-grid" id="qGrid"></div>
+    </div>
+    <div class="side">
+      <h3>Answers</h3>
+      <div class="card-grid" id="aGrid"></div>
+    </div>`;
+  const qGrid = document.getElementById('qGrid');
+  const aGrid = document.getElementById('aGrid');
+  qSlots.forEach((id, idx) => qGrid.appendChild(buildCard('q', id, idx)));
+  aSlots.forEach((slot, idx) => aGrid.appendChild(buildCard('a', slot, idx)));
+  sizeGrid(qGrid, qSlots.length);
+  sizeGrid(aGrid, aSlots.length);
+  updateProgress();
+}
+
+function sizeGrid(grid, count, cols){
+  cols = cols || 4;
+  const rows = Math.max(1, Math.ceil(count / cols));
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+}
+
+/* ---------------- Root & Suffix quiz mode ----------------
+   One root word is shown at a time on the left. Every distinct answer option in the
+   dataset is always available on the right as a fixed bank of choices — the
+   student can only click option cards, never the root. When a root has more than
+   one correct answer, ALL of them must be selected (each stays marked once found)
+   before it counts as solved and advances to the next root; a wrong pick just
+   says try again and doesn't undo progress already made on the correct ones. */
+let rsAllOptions = [];
+let rsQueue = [];
+let rsCurrentId = null;
+let rsFoundForCurrent = new Set();
+
+function buildRootSuffixQuiz(pairs){
+  rsAllOptions = (rsExplicitOptions && rsExplicitOptions.length)
+    ? rsExplicitOptions.slice()
+    : Array.from(new Set(pairs.flatMap(p => p.rights)));
+  rsQueue = shuffle(pairs.map(p => p.id));
+  matchedCount = 0;
+  totalPairs = pairs.length;
+  lock = false;
+  advanceRoot();
+  renderRSBoard();
+}
+
+function advanceRoot(){
+  if (rsQueue.length === 0) rsQueue = shuffle(pairsData.map(p => p.id));
+  rsCurrentId = rsQueue.shift();
+  rsFoundForCurrent = new Set();
+}
+
+function renderRSBoard(){
+  boardEl.innerHTML = `
+    <div class="side">
+      <h3>Root Word</h3>
+      <div class="single-card-wrap" id="rsRootWrap"></div>
+    </div>
+    <div class="side">
+      <h3>Options — select every correct answer</h3>
+      <div class="card-grid" id="rsOptionsGrid"></div>
+    </div>`;
+  const rootWrap = document.getElementById('rsRootWrap');
+  const root = pairById(rsCurrentId);
+  const rootCard = document.createElement('div');
+  rootCard.className = 'card no-flip big-card';
+  rootCard.innerHTML = `<div class="card-inner"><div class="card-face card-front">${root.left}</div></div>`;
+  rootWrap.appendChild(rootCard);
+
+  const optGrid = document.getElementById('rsOptionsGrid');
+  optGrid.classList.add('rs-grid');
+  rsAllOptions.forEach((text, idx) => {
+    const card = document.createElement('div');
+    card.className = 'card no-flip landscape-card';
+    card.innerHTML = `<div class="card-inner"><div class="card-face card-front">${text}</div></div>`;
+    card.addEventListener('click', () => onSuffixClick(text, card));
+    optGrid.appendChild(card);
+  });
+  sizeGrid(optGrid, rsAllOptions.length, 2);
+  requestAnimationFrame(() => {
+    autoFitCardText(rootCard);
+    optGrid.querySelectorAll('.card').forEach(autoFitCardText);
+  });
+  updateProgress();
+}
+
+function onSuffixClick(text, cardEl){
+  if (lock || paused) return;
+  if (cardEl.classList.contains('sel-blue')) return; // already confirmed correct this round
+  const root = pairById(rsCurrentId);
+  const correct = root.rights.includes(text);
+
+  if (correct){
+    cardEl.classList.add('sel-blue');
+    rsFoundForCurrent.add(text);
+    const complete = root.rights.every(r => rsFoundForCurrent.has(r));
+    if (complete){
+      lock = true;
+      matchedCount++;
+      awardPointForCurrentTurn();
+      playSuccessSound();
+      showMatchPopup(true);
+      setTimeout(() => {
+        advanceRoot();
+        renderRSBoard();
+        lock = false;
+      }, 500);
+    }
+    // else: correctly found one of several — stays marked, round continues, no lock.
+  } else {
+    lock = true;
+    cardEl.classList.add('sel-red');
+    showMatchPopup(false);
+    setTimeout(() => {
+      cardEl.classList.remove('sel-red');
+      lock = false;
+    }, 500);
+  }
+}
+
+function buildCard(side, slot, idx){
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.side = side;
+  card.dataset.idx = idx;
+  const noFlip = settings.format === 'root-suffix';
+  if (noFlip) card.classList.add('no-flip');
+
+  const pairId = side === 'q' ? slot : (slot ? slot.pairId : null);
+  if (pairId === null || pairId === undefined){ card.classList.add('gone'); return card; }
+  card.dataset.pairid = pairId;
+
+  const pair = pairById(pairId);
+  const frontText = side === 'q' ? pair.left : slot.text;
+
+  if (noFlip){
+    card.innerHTML = `<div class="card-inner"><div class="card-face card-front">${frontText}</div></div>`;
+  } else {
+    const backCfg = side === 'q' ? backs.a : backs.b;
+    const bg = backCfg.image ? `background-image:url(${backCfg.image});` : `background-color:${backCfg.color};`;
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="card-face card-back" style="${bg}">${backCfg.image ? '' : backCfg.label}</div>
+        <div class="card-face card-front">${frontText}</div>
+      </div>`;
+  }
+  card.addEventListener('click', () => onCardClick(side, idx, card, pairId));
+  return card;
+}
+
+/* Selection rules:
+   - Clicking a card marks it (blue for left side, red for right side); it stays visible.
+   - Clicking the SAME already-selected card again deselects it.
+   - Clicking a different card on the same side replaces the previous selection.
+   - Once both a left and a right selection exist, they are evaluated: a match clears both
+     (with a success animation/sound); a miss shows "Good try, try again!" and clears the selection
+     highlight so the student can pick again. In the hidden-card format, a miss also flips both back down. */
+function onCardClick(side, idx, cardEl, pairId){
+  if (lock || paused) return;
+  if (cardEl.classList.contains('matched')) return;
+  const noFlip = cardEl.classList.contains('no-flip');
+
+  const current = side === 'q' ? selQ : selA;
+  if (current && current.idx === idx){
+    cardEl.classList.remove('flipped', 'sel-blue', 'sel-red');
+    if (side === 'q') selQ = null; else selA = null;
+    return;
+  }
+  if (current){
+    current.cardEl.classList.remove('flipped', 'sel-blue', 'sel-red');
+  }
+  cardEl.classList.add(side === 'q' ? 'sel-blue' : 'sel-red');
+  if (!noFlip) cardEl.classList.add('flipped');
+  const sel = { pairId, cardEl, idx };
+  if (side === 'q') selQ = sel; else selA = sel;
+
+  if (selQ && selA){
+    lock = true;
+    setTimeout(evaluateSelection, 550);
+  }
+}
+
+function evaluateSelection(){
+  const match = selQ.pairId === selA.pairId;
+  if (match){
+    selQ.cardEl.classList.add('matched');
+    selA.cardEl.classList.add('matched');
+    matchedCount++;
+    awardPointForCurrentTurn();
+    playSuccessSound();
+    showMatchPopup(true);
+    const qIdx = selQ.idx, aIdx = selA.idx, matchedPairId = selQ.pairId;
+    setTimeout(() => {
+      replenishSlot('q', qIdx);
+      replenishSlot('a', aIdx);
+      clearLeftoverAnswerCards(matchedPairId, aIdx);
+      selQ = null; selA = null; lock = false;
+      updateProgress();
+    }, 400);
+  } else {
+    selQ.cardEl.classList.remove('flipped', 'sel-blue');
+    selA.cardEl.classList.remove('flipped', 'sel-red');
+    showMatchPopup(false);
+    selQ = null; selA = null; lock = false;
+  }
+}
+
+/* When a root has more than one accepted answer, only one gets used to complete the match —
+   any other still-visible answer card(s) for that same pair are cleared away too so they
+   don't linger on the board with nothing left to match. */
+function clearLeftoverAnswerCards(pairId, excludeIdx){
+  const aGrid = document.getElementById('aGrid');
+  if (!aGrid) return;
+  Array.from(aGrid.children).forEach((el, i) => {
+    if (i === excludeIdx) return;
+    if (el.dataset.pairid === String(pairId) && !el.classList.contains('matched') && !el.classList.contains('gone')){
+      el.classList.add('matched');
+      aSlots[i] = null;
+      setTimeout(() => { el.classList.add('gone'); }, 400);
+    }
+  });
+}
+
+/* ---------------- match feedback: sound + popup ---------------- */
+let audioCtx = null;
+function playSuccessSound(){
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t0 = now + i * 0.09;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.28, t0 + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.35);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.4);
+    });
+  } catch(e){ /* audio not available - fail silently */ }
+}
+
+function showMatchPopup(success){
+  const popup = document.getElementById('matchPopup');
+  const label = success
+    ? (currentTurn ? `🎉 ${currentTurn.student} +1!` : '🎉 Match!')
+    : '🤔 Good try — try again!';
+  popup.textContent = label;
+  popup.classList.toggle('miss', !success);
+  popup.classList.remove('show');
+  void popup.offsetWidth; // restart animation
+  popup.classList.add('show');
+}
+
+function replenishSlot(side, idx){
+  const slots = side === 'q' ? qSlots : aSlots;
+  const grid = document.getElementById(side === 'q' ? 'qGrid' : 'aGrid');
+  if (pool.length > 0){
+    const newId = pool.shift();
+    const newSlot = side === 'q' ? newId : { pairId: newId, text: pairById(newId).rights[0] || '' };
+    slots[idx] = newSlot;
+    const newCard = buildCard(side, newSlot, idx);
+    grid.replaceChild(newCard, grid.children[idx]);
+  } else {
+    slots[idx] = null;
+    grid.children[idx].classList.add('gone');
+  }
+}
+
+function updateProgress(){
+  progressEl.textContent = `${matchedCount} / ${totalPairs} pairs matched`;
+}
+
+/* ---------------- turn rotation ---------------- */
+let turnTables = [];   // [{table, queue:[names], gone:[names]}]
+let orderIdx = 0;
+let currentTurn = null; // {table, student}
+let turnInterval = null;
+let turnRemaining = 0;
+let paused = false;
+
+function initTurnRotation(){
+  turnTables = roster.map(t => ({ table: t.table, queue: shuffle(t.students.slice()), gone: [] }));
+  orderIdx = 0;
+  currentTurn = null;
+  paused = false;
+  pauseBtn.textContent = '⏸ Pause';
+  pauseBtn.style.display = 'none';
+  nextTurnBtn.disabled = false;
+  clearInterval(turnInterval);
+  renderTurnAdmin();
+}
+
+function nextTurn(){
+  clearInterval(turnInterval);
+  paused = false;
+  pauseBtn.textContent = '⏸ Pause';
+  nextTurnBtn.disabled = false;
+  if (turnTables.length === 0){
+    currentTurn = null;
+    turnText.textContent = 'Add students to the roster to enable timed turns.';
+    turnTimerEl.style.display = 'none';
+    nextTurnBtn.style.display = 'none';
+    pauseBtn.style.display = 'none';
+    return;
+  }
+  let found = false;
+  for (let attempts = 0; attempts < turnTables.length; attempts++){
+    const t = turnTables[orderIdx % turnTables.length];
+    orderIdx++;
+    if (t.queue.length > 0){
+      const student = t.queue.shift();
+      t.gone.push(student);
+      currentTurn = { table: t.table, student };
+      found = true;
+      break;
+    }
+  }
+  if (!found){
+    currentTurn = null;
+    turnText.textContent = 'All students have had a turn! Reset the game to start a new round.';
+    turnTimerEl.style.display = 'none';
+    nextTurnBtn.style.display = 'none';
+    pauseBtn.style.display = 'none';
+    renderTurnAdmin();
+    return;
+  }
+  nextTurnBtn.style.display = '';
+  pauseBtn.style.display = '';
+  startTurnTimer();
+  renderTurnAdmin();
+}
+
+function startTurnTimer(){
+  clearInterval(turnInterval);
+  turnRemaining = settings.turnSeconds;
+  updateTurnDisplay();
+  if (settings.useTimer) startInterval();
+}
+
+function startInterval(){
+  clearInterval(turnInterval);
+  turnInterval = setInterval(() => {
+    turnRemaining--;
+    updateTurnDisplay();
+    if (turnRemaining <= 0){ nextTurn(); }
+  }, 1000);
+}
+
+function updateTurnDisplay(){
+  turnText.innerHTML = `Now up: <strong>${currentTurn.student}</strong> — <span class="table-tag">${currentTurn.table}</span>`;
+  if (settings.useTimer){
+    turnTimerEl.style.display = '';
+    turnTimerEl.textContent = turnRemaining + 's';
+  } else {
+    turnTimerEl.style.display = 'none';
+  }
+}
+
+function awardPointForCurrentTurn(){
+  if (!currentTurn) return;
+  const name = currentTurn.student;
+  if (!leaderboard[name]) leaderboard[name] = { wins: 0, table: currentTurn.table };
+  leaderboard[name].wins++;
+  leaderboard[name].table = currentTurn.table;
+  saveJSON(LS_LEADERBOARD, leaderboard);
+  renderLeaderboard();
+}
+
+function resetStudentTurn(tableName, student){
+  const t = turnTables.find(x => x.table === tableName);
+  if (!t) return;
+  t.gone = t.gone.filter(s => s !== student);
+  if (!t.queue.includes(student)) t.queue.unshift(student);
+  renderTurnAdmin();
+}
+
+function renderTurnAdmin(){
+  if (turnTables.length === 0){
+    turnAdminList.innerHTML = '<div class="status">Add tables below, then click "Generate Game" to start turn rotation.</div>';
+    return;
+  }
+  turnAdminList.innerHTML = turnTables.map(t => `
+    <div class="turn-table-admin">
+      <div style="font-weight:700;">${t.table} <span style="font-weight:400; color:#888;">(${t.gone.length}/${t.gone.length + t.queue.length} gone)</span></div>
+      <div style="margin-top:6px;">${
+        t.gone.length
+          ? t.gone.map(s => `<span class="gone-chip">${s}<button class="neutral" data-table="${t.table}" data-student="${s}">reset turn</button></span>`).join('')
+          : '<span class="status">No one from this table has gone yet.</span>'
+      }</div>
+    </div>`).join('');
+  turnAdminList.querySelectorAll('button[data-student]').forEach(btn => {
+    btn.addEventListener('click', () => resetStudentTurn(btn.dataset.table, btn.dataset.student));
+  });
+}
+
+/* ---------------- leaderboard (points, editable) ---------------- */
+function renderLeaderboard(){
+  const rows = Object.entries(leaderboard).sort((a,b) => b[1].wins - a[1].wins);
+  leaderboardBody.innerHTML = rows.map(([name, info]) => `
+    <tr>
+      <td>${name}</td>
+      <td>${info.table || ''}</td>
+      <td><input type="number" data-name="${name}" value="${info.wins}"></td>
+    </tr>`).join('') || '<tr><td colspan="3" style="color:#999;">No points yet.</td></tr>';
+  leaderboardBody.querySelectorAll('input[data-name]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const n = inp.dataset.name;
+      leaderboard[n].wins = parseInt(inp.value, 10) || 0;
+      saveJSON(LS_LEADERBOARD, leaderboard);
+    });
+  });
+}
+
+resetLeaderboardBtn.addEventListener('click', () => {
+  if (!confirm('Reset all points?')) return;
+  leaderboard = {};
+  saveJSON(LS_LEADERBOARD, leaderboard);
+  renderLeaderboard();
+});
+
+/* ---------------- roster ---------------- */
+function renderRoster(){
+  rosterList.innerHTML = roster.map((t, i) => `
+    <div class="roster-item">
+      <span class="name">${t.table}</span> — ${t.students.join(', ')}
+      <button class="danger small-btn" style="float:right;" data-idx="${i}">Remove</button>
+    </div>`).join('') || '<div class="status">No tables added yet.</div>';
+  rosterList.querySelectorAll('button[data-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      roster.splice(parseInt(btn.dataset.idx, 10), 1);
+      saveJSON(LS_ROSTER, roster);
+      renderRoster();
+    });
+  });
+}
+
+uploadRosterBtn.addEventListener('click', () => {
+  const raw = rosterPaste.value.replace(/\r/g, '');
+  const lines = raw.split('\n').filter(l => l.trim().length > 0);
+  let rows = lines.map(splitLine).map(r => r.map(c => (c || '').trim()));
+  if (rosterHasHeaders.checked && rows.length > 0) rows = rows.slice(1);
+  rows = rows.filter(r => r[0] && r[1]);
+
+  if (rows.length === 0){
+    rosterUploadStatus.textContent = 'No valid rows found — need a table name and a student name per row.';
+    return;
+  }
+
+  let addedStudents = 0, addedTables = 0;
+  rows.forEach(r => {
+    const tableName = r[0], student = r[1];
+    let t = roster.find(x => x.table.toLowerCase() === tableName.toLowerCase());
+    if (!t){
+      t = { table: tableName, students: [] };
+      roster.push(t);
+      addedTables++;
+    }
+    if (!t.students.some(s => s.toLowerCase() === student.toLowerCase())){
+      t.students.push(student);
+      addedStudents++;
+    }
+  });
+
+  saveJSON(LS_ROSTER, roster);
+  renderRoster();
+  rosterUploadStatus.textContent = `Added ${addedStudents} student(s) across ${addedTables} new table(s) (existing tables merged).`;
+  rosterPaste.value = '';
+});
+
+addTableBtn.addEventListener('click', () => {
+  const table = newTableName.value.trim();
+  const students = newTableStudents.value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!table || students.length === 0) return;
+  roster.push({ table, students });
+  saveJSON(LS_ROSTER, roster);
+  newTableName.value = ''; newTableStudents.value = '';
+  renderRoster();
+});
+
+/* ---------------- card backs ---------------- */
+function applyBackInputs(){
+  colorA.value = backs.a.color; labelA.value = backs.a.label;
+  colorB.value = backs.b.color; labelB.value = backs.b.label;
+  renderBackPreviews();
+}
+function renderBackPreviews(){
+  previewA.style.backgroundImage = backs.a.image ? `url(${backs.a.image})` : '';
+  previewA.style.backgroundColor = backs.a.color;
+  previewA.textContent = backs.a.image ? '' : backs.a.label;
+  previewB.style.backgroundImage = backs.b.image ? `url(${backs.b.image})` : '';
+  previewB.style.backgroundColor = backs.b.color;
+  previewB.textContent = backs.b.image ? '' : backs.b.label;
+}
+function fileToDataUrl(file, cb){
+  const reader = new FileReader();
+  reader.onload = () => cb(reader.result);
+  reader.readAsDataURL(file);
+}
+
+colorA.addEventListener('input', () => { backs.a.color = colorA.value; saveJSON(LS_BACKS, backs); renderBackPreviews(); });
+colorB.addEventListener('input', () => { backs.b.color = colorB.value; saveJSON(LS_BACKS, backs); renderBackPreviews(); });
+labelA.addEventListener('input', () => { backs.a.label = labelA.value; saveJSON(LS_BACKS, backs); renderBackPreviews(); });
+labelB.addEventListener('input', () => { backs.b.label = labelB.value; saveJSON(LS_BACKS, backs); renderBackPreviews(); });
+imageA.addEventListener('change', () => { if (imageA.files[0]) fileToDataUrl(imageA.files[0], url => { backs.a.image = url; saveJSON(LS_BACKS, backs); renderBackPreviews(); }); });
+imageB.addEventListener('change', () => { if (imageB.files[0]) fileToDataUrl(imageB.files[0], url => { backs.b.image = url; saveJSON(LS_BACKS, backs); renderBackPreviews(); }); });
+clearImageA.addEventListener('click', () => { backs.a.image = null; imageA.value = ''; saveJSON(LS_BACKS, backs); renderBackPreviews(); });
+clearImageB.addEventListener('click', () => { backs.b.image = null; imageB.value = ''; saveJSON(LS_BACKS, backs); renderBackPreviews(); });
+
+/* ---------------- turn settings ---------------- */
+turnSecondsEl.value = settings.turnSeconds;
+turnSecondsEl.addEventListener('change', () => {
+  settings.turnSeconds = parseInt(turnSecondsEl.value, 10) || 30;
+  saveJSON(LS_SETTINGS, settings);
+});
+useTimerToggle.checked = settings.useTimer;
+useTimerToggle.addEventListener('change', () => {
+  settings.useTimer = useTimerToggle.checked;
+  saveJSON(LS_SETTINGS, settings);
+  clearInterval(turnInterval);
+  if (currentTurn && !paused){
+    if (settings.useTimer) startInterval();
+    else { turnTimerEl.style.display = 'none'; }
+  }
+});
+
+/* ---------------- view switching ---------------- */
+function showGameView(){
+  setupView.style.display = 'none';
+  gameView.style.display = 'flex';
+}
+function showSetupView(){
+  gameView.style.display = 'none';
+  setupView.style.display = '';
+}
+backToAdminBtn.addEventListener('click', showSetupView);
+fullscreenBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+});
+nextTurnBtn.addEventListener('click', nextTurn);
+pauseBtn.addEventListener('click', () => {
+  paused = !paused;
+  if (paused){
+    clearInterval(turnInterval);
+    pauseBtn.textContent = '▶ Resume';
+    nextTurnBtn.disabled = true;
+  } else {
+    pauseBtn.textContent = '⏸ Pause';
+    nextTurnBtn.disabled = false;
+    if (settings.useTimer && currentTurn) startInterval();
+  }
+});
+
+/* ---------------- main actions ---------------- */
+generateBtn.addEventListener('click', () => {
+  const pairs = parsePairs();
+  if (pairs.length < 1){
+    dataStatus.textContent = 'Paste at least one question/answer row first.';
+    return;
+  }
+  dataStatus.textContent = `${pairs.length} pair(s) loaded.`;
+  playAgainBtn.disabled = false;
+  startGameForFormat(pairs);
+  initTurnRotation();
+  nextTurn();
+  showGameView();
+});
+
+playAgainBtn.addEventListener('click', () => {
+  if (pairsData.length === 0) return;
+  startGameForFormat(pairsData);
+});
+
+resetGameBtn.addEventListener('click', () => {
+  if (pairsData.length === 0){
+    turnAdminStatus.textContent = 'Paste data and click "Generate Game" at least once first.';
+    return;
+  }
+  turnAdminStatus.textContent = 'Game reset — board reshuffled and turn order restarted.';
+  startGameForFormat(pairsData);
+  initTurnRotation();
+  nextTurn();
+});
+
+/* ---------------- init ---------------- */
+function updateFormatHint(){
+  formatHint.textContent = settings.format === 'root-suffix'
+    ? 'Current format: Root Word & Suffix — all cards stay face up.'
+    : 'Current format: Question & Answer — cards are hidden until picked.';
+}
+gameFormatEl.value = settings.format;
+gameFormatEl.addEventListener('change', () => {
+  settings.format = gameFormatEl.value;
+  saveJSON(LS_SETTINGS, settings);
+  updateFormatHint();
+});
+
+transposedFormatEl.addEventListener('change', () => {
+  hasHeadersLabel.style.display = transposedFormatEl.checked ? 'none' : '';
+});
+
+applyBackInputs();
+renderRoster();
+renderLeaderboard();
+renderTurnAdmin();
+updateFormatHint();
+</script>
+</body>
+</html>
